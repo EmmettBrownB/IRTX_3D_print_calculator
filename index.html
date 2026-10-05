@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IRTX — Собівартість 3D-друку</title>
+<style>
+  :root{
+    --bg:#0b0d10;
+    --panel:#14171c;
+    --panel2:#191d23;
+    --line:#262b33;
+    --text:#e8ecf1;
+    --muted:#8a93a3;
+    --neon-red:#ff3b3b;
+    --neon-cyan:#2fe6ff;
+    --neon-green:#39ff8a;
+    --input-bg:#0f1216;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(700px 300px at 10% -5%, rgba(255,59,59,.12), transparent 60%),
+      radial-gradient(700px 300px at 90% 0%, rgba(47,230,255,.10), transparent 60%),
+      var(--bg);
+    color:var(--text);
+    font-family: "Segoe UI", Arial, sans-serif;
+    padding:32px 18px 80px;
+  }
+  .wrap{max-width:1080px;margin:0 auto;}
+
+  header{text-align:center; margin-bottom:34px;}
+  .logo{
+    font-family:"Comic Sans MS", "Comic Sans", cursive;
+    font-size:44px;
+    letter-spacing:1px;
+    color:#fff;
+    text-shadow:
+      0 0 6px var(--neon-red),
+      0 0 18px var(--neon-red),
+      0 0 40px rgba(255,59,59,.6);
+  }
+  header p{color:var(--muted); margin-top:6px; font-size:14px;}
+
+  h2.section-title{
+    font-size:13px;
+    text-transform:uppercase;
+    letter-spacing:2px;
+    color:var(--neon-cyan);
+    border-bottom:1px solid var(--line);
+    padding-bottom:10px;
+    margin:40px 0 16px;
+  }
+
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:20px;
+  }
+
+  .size-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+    gap:14px;
+  }
+  .field{display:flex; flex-direction:column; gap:6px;}
+  .field label{font-size:12px; color:var(--muted);}
+  .field input{
+    background:var(--input-bg);
+    border:1px solid var(--line);
+    color:var(--text);
+    padding:9px 10px;
+    border-radius:8px;
+    font-size:14px;
+    outline:none;
+    transition:border-color .15s, box-shadow .15s;
+  }
+  .field input:focus{
+    border-color:var(--neon-cyan);
+    box-shadow:0 0 0 3px rgba(47,230,255,.15);
+  }
+
+  table.calc{
+    width:100%;
+    border-collapse:collapse;
+    font-size:14px;
+  }
+  table.calc th{
+    text-align:left;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:1px;
+    color:var(--muted);
+    padding:8px 10px;
+    border-bottom:1px solid var(--line);
+  }
+  table.calc td{
+    padding:8px 10px;
+    border-bottom:1px solid var(--line);
+    vertical-align:middle;
+  }
+  table.calc tr:last-child td{border-bottom:none;}
+  table.calc tr.total-row td{
+    border-top:1px solid var(--line);
+    font-weight:700;
+  }
+  .comp-name{color:#fff; font-weight:600; white-space:nowrap;}
+  .price-cell{color:var(--neon-green); font-weight:600; white-space:nowrap;}
+  .price-cell.total{color:var(--neon-cyan); font-size:16px;}
+
+  .totals{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+    gap:14px;
+    margin-top:18px;
+  }
+  .total-card{
+    background:var(--panel2);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:16px;
+  }
+  .total-card .t-label{font-size:12px;color:var(--muted); text-transform:uppercase; letter-spacing:.5px;}
+  .total-card .t-value{font-size:22px; font-weight:700; margin-top:6px; color:var(--neon-cyan);}
+  .total-card .t-sub{font-size:12px; color:var(--muted); margin-top:4px;}
+  .total-card.main{
+    border-color:var(--neon-red);
+    box-shadow:0 0 24px rgba(255,59,59,.15);
+  }
+  .total-card.main .t-value{color:var(--neon-red);}
+  .total-card.ideal{
+    border-color:var(--neon-green);
+    box-shadow:0 0 24px rgba(57,255,138,.12);
+  }
+  .total-card.ideal .t-value{color:var(--neon-green);}
+
+  .discount-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+    gap:14px;
+    margin-top:10px;
+  }
+
+  .hint{color:var(--muted); font-size:12px; margin-top:14px; line-height:1.5;}
+  footer{text-align:center; color:var(--muted); font-size:12px; margin-top:50px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="logo">IRTX</div>
+    <p>Калькулятор собівартості 3D-друку — редагуйте будь-яке значення, підсумки перерахуються автоматично</p>
+  </header>
+
+  <h2 class="section-title">ПАРАМЕТРИ ТА ДЕТАЛІ ДРУКУ</h2>
+  <div class="panel">
+    <div class="size-grid">
+      <div class="field"><label>Назва деталі</label><input type="text" id="name" value="Деталь"></div>
+      <div class="field"><label>Вага пластика, г</label><input type="number" id="B4" value="25" step="0.1"></div>
+      <div class="field"><label>Час друку, хв</label><input type="number" id="C4" value="240"></div>
+      <div class="field"><label>Кількість, шт</label><input type="number" id="E4" value="1" step="1"></div>
+      <div class="field"><label>Вартість пластика, ₴/кг</label><input type="number" id="G4" value="1000"></div>
+      <div class="field"><label>Тариф на електрику, ₴/кВт·год</label><input type="number" id="H4" value="4.32" step="0.01"></div>
+      <input type="hidden" id="I4" value="200">
+      <input type="hidden" id="K4" value="12000">
+      <input type="hidden" id="L4" value="2000">
+      <div class="field"><label>Коефіцієнт ремонту, %</label><input type="number" id="M4" value="35" step="1"></div>
+      <div class="field"><label>Вартість постобробки, ₴/шт</label><input type="number" id="D4" value="0"></div>
+      <div class="field"><label>Вартість запчастин, ₴/шт</label><input type="number" id="F4" value="0"></div>
+      <div class="field"><label>Вартість пакування, ₴/шт</label><input type="number" id="B14" value="0"></div>
+    </div>
+    <div class="hint">
+      Час друку: <span id="C6">0</span> год · Амортизація принтера: <span id="J4">0</span> ₴/год ·
+      Коеф. хв/г: <span id="C7">0</span>
+    </div>
+  </div>
+
+  <h2 class="section-title">Собівартість (наростаючим підсумком)</h2>
+  <div class="panel">
+    <table class="calc">
+      <thead>
+        <tr><th>Стаття витрат</th><th>За одиницю</th><th>Разом (з урахуванням кількості)</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="comp-name">Вартість пластику</td>
+          <td class="price-cell" id="B9">0</td>
+          <td class="price-cell" id="C9">0</td>
+        </tr>
+        <tr>
+          <td class="comp-name">Вартість енергії</td>
+          <td class="price-cell" id="B10">0</td>
+          <td class="price-cell" id="C10">0</td>
+        </tr>
+        <tr>
+          <td class="comp-name">Вартість амортизації</td>
+          <td class="price-cell" id="B11">0</td>
+          <td class="price-cell" id="C11">0</td>
+        </tr>
+        <tr>
+          <td class="comp-name">Вартість запчастин</td>
+          <td class="price-cell" id="B12">0</td>
+          <td class="price-cell" id="C12">0</td>
+        </tr>
+        <tr>
+          <td class="comp-name">Вартість обробки</td>
+          <td class="price-cell" id="B13">0</td>
+          <td class="price-cell" id="C13">0</td>
+        </tr>
+        <tr>
+          <td class="comp-name">Вартість пакування</td>
+          <td class="price-cell" id="B14_out">0</td>
+          <td class="price-cell" id="C14">0</td>
+        </tr>
+        <tr class="total-row">
+          <td class="comp-name">Собівартість</td>
+          <td></td>
+          <td class="price-cell total" id="C17">0</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="hint">Енергія + амортизація: <span id="C16">0</span> ₴</div>
+  </div>
+
+  <h2 class="section-title">Варіанти ціни продажу</h2>
+  <div class="totals">
+    <div class="total-card">
+      <div class="t-label">Найменша · ×2</div>
+      <div class="t-value" id="D20">0</div>
+      <div class="t-sub">Вигода: <span id="E20">0</span> ₴</div>
+    </div>
+    <div class="total-card ideal">
+      <div class="t-label">Ідеальна · ×3</div>
+      <div class="t-value" id="D22">0</div>
+      <div class="t-sub">Вигода: <span id="E22">0</span> ₴</div>
+    </div>
+    <div class="total-card">
+      <div class="t-label">Найбільша · ×4</div>
+      <div class="t-value" id="D24">0</div>
+      <div class="t-sub">Вигода: <span id="E24">0</span> ₴</div>
+    </div>
+  </div>
+
+  <h2 class="section-title">Знижки від ціни «Ідеальна»</h2>
+  <div class="discount-grid">
+    <div class="total-card">
+      <div class="t-label">Знижка 10%</div>
+      <div class="t-value" id="D26">0</div>
+      <div class="t-sub">Втрата: <span id="E26">0</span> ₴</div>
+    </div>
+    <div class="total-card">
+      <div class="t-label">Знижка 15%</div>
+      <div class="t-value" id="D27">0</div>
+      <div class="t-sub">Втрата: <span id="E27">0</span> ₴</div>
+    </div>
+    <div class="total-card">
+      <div class="t-label">Знижка 20%</div>
+      <div class="t-value" id="D28">0</div>
+      <div class="t-sub">Втрата: <span id="E28">0</span> ₴</div>
+    </div>
+  </div>
+
+  <p class="hint">
+    Розрахунок повторює формули оригінальної excel-таблиці: вартість пластика йде за вагою та ціною за кг,
+    вартість енергії — за часом друку, потужністю принтера та тарифом, амортизація — за вартістю принтера
+    поділеною на його ресурс (плюс надбавка на коефіцієнт ремонту), а ціни продажу — це собівартість,
+    помножена на обраний коефіцієнт націнки.
+  </p>
+
+  <footer>IRTX · калькулятор собівартості 3D-друку</footer>
+</div>
+
+<script>
+function num(id){
+  const el = document.getElementById(id);
+  if(!el){ console.warn('Не знайдено поле:', id); return 0; }
+  return parseFloat(el.value) || 0;
+}
+function setText(id, v){ const el = document.getElementById(id); if(el) el.textContent = fmt(v); }
+function fmt(v){ return (Math.round(v*100)/100).toLocaleString('uk-UA'); }
+
+function recalc(){
+  const B4 = num('B4'); // вага, г
+  const C4in = num('C4'); // час друку, хв
+  const D4 = num('D4'); // постобробка
+  const E4 = num('E4'); // кількість
+  const F4 = num('F4'); // запчастини
+  const G4 = num('G4'); // ціна пластику ₴/кг
+  const H4 = num('H4'); // тариф електрики
+  const I4 = num('I4'); // потужність, Вт
+  const K4 = num('K4'); // вартість принтера
+  const L4 = num('L4'); // ресурс принтера, год
+  const M4 = num('M4') / 100; // коефіцієнт ремонту
+  const B14in = num('B14'); // пакування за одиницю
+
+  const J4 = L4 !== 0 ? K4 / L4 : 0; // амортизація ₴/год
+  const C6 = C4in / 60; // час друку, год
+  const C7 = B4 !== 0 ? C4in / B4 : 0; // коеф хв/г
+
+  setText('J4', J4);
+  setText('C6', C6);
+  setText('C7', C7);
+
+  // Вартість пластику
+  const B9 = (B4/1000) * G4 * E4;
+  const C9 = B9;
+
+  // Вартість енергії
+  const B10 = C6 * (I4/1000) * H4 * E4;
+  const C10 = C9 + B10;
+
+  // Вартість амортизації (амортизація за час друку + надбавка на ремонт)
+  const M6 = (C6 * J4) * M4 * E4;
+  const B11 = (C6 * J4) + M6;
+  const C11 = C10 + B11;
+
+  // Вартість запчастин
+  const B12 = F4 * E4;
+  const C12 = C11 + B12;
+
+  // Вартість обробки
+  const B13 = D4 * E4;
+  const C13 = C12 + B13;
+
+  // Вартість пакування
+  const B14 = B14in * E4;
+  const C14 = C13 + B14;
+
+  const C16 = B11 + B10;
+  const C17 = C14; // собівартість
+
+  setText('B9', B9); setText('C9', C9);
+  setText('B10', B10); setText('C10', C10);
+  setText('B11', B11); setText('C11', C11);
+  setText('B12', B12); setText('C12', C12);
+  setText('B13', B13); setText('C13', C13);
+  setText('B14_out', B14); setText('C14', C14);
+  setText('C16', C16);
+  setText('C17', C17);
+
+  // Ціни продажу
+  const mult = {20:2, 21:2.5, 22:3, 23:3.5, 24:4};
+  for(const row in mult){
+    const price = C17 * mult[row];
+    const profit = price - C17;
+    setText('D'+row, price);
+    setText('E'+row, profit);
+  }
+
+  // Знижки від "Ідеальної" (D22)
+  const ideal = C17 * 3;
+  const discounts = {26:0.10, 27:0.15, 28:0.20};
+  for(const row in discounts){
+    const discounted = ideal - (ideal * discounts[row]);
+    const loss = ideal - discounted;
+    setText('D'+row, discounted);
+    setText('E'+row, loss);
+  }
+}
+
+document.querySelectorAll('input').forEach(el=>{
+  el.addEventListener('input', recalc);
+  el.addEventListener('change', recalc);
+});
+
+recalc();
+</script>
+</body>
+</html>
